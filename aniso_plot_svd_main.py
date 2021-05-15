@@ -1,4 +1,4 @@
-from codes.AnisoSVD import AnisoSVD
+from palxfel_scatter.AnisoSVD import AnisoSVD
 
 anisoSVDanalyzer = AnisoSVD()
 anisoSVDanalyzer.read_aniso_results()

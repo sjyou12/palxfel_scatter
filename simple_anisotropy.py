@@ -1,4 +1,4 @@
-from codes.AnisoAnal import ImgData, AnisoAnal
+from palxfel_scatter.AnisoAnal import ImgData, AnisoAnal
 
 testAnisoAnalyzer = AnisoAnal()
 now_common_path = "/home/common/exp_data/PAL-XFEL_20201217-back/rawData/"

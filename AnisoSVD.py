@@ -1,8 +1,6 @@
-from codes.SVDCalc import SVDCalc
+from palxfel_scatter.SVDCalc import SVDCalc
 import numpy as np
 import matplotlib.pyplot as plt
-import re
-
 
 class AnisoSVD:
     svd_delay_range = range(54)

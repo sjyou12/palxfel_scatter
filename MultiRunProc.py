@@ -1,5 +1,5 @@
-from codes.DataClasses import tth_to_q, plot_sum_for_criteria, match_water_near_intensity_pair
-from codes.PulseDataLight import PulseDataLight
+from palxfel_scatter.DataClasses import tth_to_q, plot_sum_for_criteria, match_water_near_intensity_pair
+from palxfel_scatter.PulseDataLight import PulseDataLight
 import h5py as h5
 import numpy as np
 import re
