@@ -2,10 +2,10 @@
 extract necessary information for anaisotropy signal from in-exp analysis code
 """
 
-from palxfel_scatter.MultiRunProc import MultiRunProc
+from palxfel_scatter.diff_pair_1dcurve.MultiRunProc import MultiRunProc
 import math
 import numpy as np
-from palxfel_scatter.AnisoAnal import AnisoAnal
+from palxfel_scatter.anisotropy.AnisoAnal import AnisoAnal
 
 now_analysis_run = 53
 

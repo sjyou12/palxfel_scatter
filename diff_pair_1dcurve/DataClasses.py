@@ -7,25 +7,6 @@ import ast
 svd_start_idx = 93
 svd_end_idx = -180
 
-# common constant for calculating q values
-XrayEnergy = 14  # keV unit
-XrayWavelength = 12.3984 / XrayEnergy  # Angstrom unit (10^-10 m)
-QCoefficient = 4 * math.pi / XrayWavelength
-NormFactor = 100000  # Normalization factor (sum of all integration)
-
-def tth_to_q(tth_arr):
-    """
-    convert 2theta value to q
-    :param tth_arr: 2theta(degree unit) array
-    :return: q value array
-    """
-    output_q = []
-    for each_tth in tth_arr:
-        now_q = QCoefficient * math.sin(math.radians(each_tth / 2))
-        output_q.append(now_q)
-    return output_q
-
-
 def find_neareast_pair(compare_arr, item):
     temp_arr = np.asarray(compare_arr)
     pair_idx = (np.abs(temp_arr - item)).argmin()

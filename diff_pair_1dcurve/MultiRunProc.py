@@ -1,5 +1,6 @@
-from palxfel_scatter.DataClasses import tth_to_q, plot_sum_for_criteria, match_water_near_intensity_pair
-from palxfel_scatter.PulseDataLight import PulseDataLight
+from palxfel_scatter.diff_pair_1dcurve.DataClasses import plot_sum_for_criteria, match_water_near_intensity_pair
+from palxfel_scatter.diff_pair_1dcurve.Tth2qConvert import Tth2qConvert
+from palxfel_scatter.diff_pair_1dcurve.PulseDataLight import PulseDataLight
 import h5py as h5
 import numpy as np
 import re
@@ -27,6 +28,8 @@ class MultiRunProc:
     whole_run_diff_list = []
     whole_run_cutted_diff_list = []
 
+    tth_to_q_cvt = None
+
     def __init__(self, each_run_info):
         self.eachRunInfo = each_run_info  # database format
         self.runList = []
@@ -40,7 +43,8 @@ class MultiRunProc:
         self.file_common_name = run_name_conc
         print("now file common name : ", run_name_conc)
 
-    def common_variables(self, file_common_root):
+    def common_variables(self, x_ray_energy, file_common_root):
+        self.tth_to_q_cvt = Tth2qConvert(x_ray_energy)
         self.FileCommonRoot = file_common_root
 
     def read_twotheta_value(self):
@@ -55,7 +59,7 @@ class MultiRunProc:
         now_tth_obj_name = twotheta_keys[0]
         self.twotheta_val = np.array(twotheta_file[now_tth_obj_name])
         print("read fixed 2theta value end. shape of value : ", self.twotheta_val.shape)
-        self.q_val = np.array(tth_to_q(self.twotheta_val))
+        self.q_val = np.array(self.tth_to_q_cvt.tth_to_q(self.twotheta_val))
         print("now q values : from ", self.q_val[0], "to", self.q_val[-1])
 
     def water_range_q_idx_calc(self):
