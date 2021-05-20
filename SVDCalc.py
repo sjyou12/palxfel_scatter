@@ -122,7 +122,10 @@ class SVDCalc:
         for sp_idx in range(0, self.meanNum):
             value_len = len(transRight[sp_idx])
             plt.plot(transRight[sp_idx], label=("rightVec" + str(sp_idx + 1)))
-            plt.xticks(ticks=range(value_len), labels=x_text[:value_len])
+            try:
+                plt.xticks(ticks=range(value_len), labels=x_text[:value_len])
+            except:
+                print("plot xticks error :", range(value_len), x_text[:value_len])
         if v_line_1 != 0.0:
             plt.axvline(x=v_line_1, color='r')
         if v_line_2 != 0.0:

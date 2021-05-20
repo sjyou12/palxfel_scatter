@@ -30,7 +30,7 @@ class AnisoAnal:
     sample_detector_dist = 0.0
     detector_num_pixel = 1440  # 1440x1440 pixel detector
     pixel_size = 156e-6  # unit of m
-    xray_energy = 14  # keV unit
+    xray_energy = 9.7  # keV unit
     xray_wavelength = 12.3984 / xray_energy  # Angstrom unit (10^-10 m)
     xray_wavelength_in_m = xray_wavelength * 1e-10  # unit of m
     norm_on_img_list = []
@@ -48,6 +48,7 @@ class AnisoAnal:
         self.each_delay_cutted_aniso = []
         self.img_file_names = []
         self.img_dir_path = []
+        self.bkg_img = []
 
     def set_common_env(self, common_path):
         self.common_file_path = common_path
@@ -67,6 +68,17 @@ class AnisoAnal:
             plt.pcolor(self.remain_area_by_mask)
             plt.colorbar()
             plt.show()
+
+    def set_background(self, bkg_file):
+        now_bkg_file = h5.File(bkg_file, 'r')
+        keys_now_file = list(now_bkg_file.keys())
+
+        bkg_img_datas = []
+        for each_key in keys_now_file:
+            bkg_img_datas.append(np.array(now_bkg_file[each_key]))
+
+        self.bkg_img = np.average(np.array(bkg_img_datas), axis=0)
+        print("end background img calc")
 
     def read_single_delay_h5_files(self, run_num, delay_num):
         run_img_dir_path = self.common_file_path + "run" + str(run_num) + "/eh2rayMX_img/"
@@ -125,13 +137,13 @@ class AnisoAnal:
         self.multi_aniso_plot()
 
     def read_img_file_names(self, run_num):
-        run_img_dir_path = self.common_file_path + "run" + str(run_num) + "/eh2rayMX_img/"
+        run_img_dir_path = self.common_file_path + "run{0:04d}_00001_DIR/".format(run_num) + "eh1rayMX_img/"
         self.img_dir_path = run_img_dir_path
         img_h5_file_names = os.listdir(run_img_dir_path)
         img_h5_file_names.sort()
         self.img_file_names = img_h5_file_names
 
-    def aniso_anal_each_delay(self, norm_data, pair_info, idx_delay):
+    def aniso_anal_each_delay(self, norm_data, pair_info, idx_delay, run_num):
 
         now_file_name = self.img_file_names[idx_delay]
         now_file_path = self.img_dir_path + now_file_name
@@ -144,6 +156,7 @@ class AnisoAnal:
         for each_key in now_file_keys:
             now_pulseID = int(re.findall("(.*)\.(.*)_(.*)", each_key)[0][2])
             now_img_data = np.array(now_file[each_key], dtype=float)
+            now_img_data = now_img_data - self.bkg_img
             now_data = ImgData(now_img_data, now_pulseID, each_key)
             if now_data.laser_is_on:
                 self.on_img_list.append(now_data)
@@ -152,10 +165,11 @@ class AnisoAnal:
         now_file.close()
 
         print("before make_normalized_pair_diff_img")
+        # TODO : off result plot
         self.make_normalized_pair_diff_img(norm_data, pair_info, idx_delay, False)
         print("before aniso_anal_diff_img")
-        self.aniso_anal_diff_img(result_plot=True)
-        self.now_delay_file_out(idx_delay)
+        self.aniso_anal_diff_img(result_plot=False)
+        self.now_delay_file_out(idx_delay, run_num)
         # self.multi_aniso_plot()
 
     def get_diff_img(self):
@@ -272,9 +286,12 @@ class AnisoAnal:
             # print(each_pair_data)
             on_key = each_pair_data[0]
             off_key = each_pair_data[1]
-
-            on_img_idx = (np.where(on_key_list == on_key))[0][0]
-            off_img_idx = (np.where(off_key_list == off_key))[0][0]
+            # TODO : remove try-except part
+            try:
+                on_img_idx = (np.where(on_key_list == on_key))[0][0]
+                off_img_idx = (np.where(off_key_list == off_key))[0][0]
+            except:
+                print("error key : {}(on) / {}(off)".format(on_key, off_key))
 
             on_img_data = on_img_list[on_img_idx].raw_data
             off_img_data = off_img_list[off_img_idx].raw_data
@@ -289,9 +306,9 @@ class AnisoAnal:
     @staticmethod
     def normalize_img_list(img_list, key_norm_val_pair_list):
         print("now img list size : ", np.shape(img_list) , "now key_norm_val_pair_list : ", np.shape(key_norm_val_pair_list))
-        UpperBoundOfNotWater = 50000
-        LowerBoundOfWater = 100000
-        WaterOutlierLowerBound = 900000
+        UpperBoundOfNotWater = 8000
+        LowerBoundOfWater = 10000
+        WaterOutlierLowerBound = 30000
         do_outlier_rm = True
 
         key_list = np.transpose(key_norm_val_pair_list)[0]
@@ -443,8 +460,8 @@ class AnisoAnal:
         plt.legend()
         plt.show()
 
-    def now_delay_file_out(self, idx_delay):
-        file_save_root = "../results/anisotropy/run" + str(idx_delay + 1)
+    def now_delay_file_out(self, idx_delay, run_num):
+        file_save_root = "../results/anisotropy/anal_result/run{0}_delay{1}".format(run_num, idx_delay + 1)
         q_val_file_name = file_save_root + "_qval"
         iso_file_name = file_save_root + "_iso"
         aniso_file_name = file_save_root + "_aniso"

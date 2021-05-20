@@ -3,23 +3,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class AnisoSVD:
-    svd_delay_range = range(54)
+    svd_delay_range = range(47)
     one_fig_num_of_plot = 5
+    now_run_num = 0
+    file_family_name = None
 
     def __init__(self):
         self.first_q_val = []
         self.all_delay_iso = []
         self.all_delay_aniso = []
+        self.time_delay_list = []
 
-    def read_aniso_results(self):
+    def read_aniso_results(self, time_delay_list, run_num=4):
+        self.time_delay_list = time_delay_list
+        self.now_run_num = run_num
+        self.file_family_name = "run" + str(run_num)
         for idx_delay in self.svd_delay_range:
-            file_load_root = "../results/anisotropy/anal_result/run" + str(idx_delay + 1)
+            file_load_root = "../results/anisotropy/anal_result/run{}_delay{}".format(self.now_run_num, idx_delay + 1)
             q_val_file_name = file_load_root + "_qval.npy"
             iso_file_name = file_load_root + "_iso.npy"
             aniso_file_name = file_load_root + "_aniso.npy"
-            now_q_val_arr = np.load(q_val_file_name)
-            now_iso_arr = np.load(iso_file_name)
-            now_aniso_arr = np.load(aniso_file_name)
+            try:
+                now_q_val_arr = np.load(q_val_file_name)
+            except:
+                print("no q value at ", q_val_file_name)
+                now_q_val_arr = np.zeros_like(self.first_q_val)
+            try:
+                now_iso_arr = np.load(iso_file_name)
+            except:
+                print("no iso val at ", iso_file_name)
+                now_iso_arr = np.zeros_like(self.first_q_val)
+            try:
+                now_aniso_arr = np.load(aniso_file_name)
+            except:
+                print("no aniso val at ", aniso_file_name)
+                now_aniso_arr = np.zeros_like(self.first_q_val)
+
             if idx_delay == 0:
                 self.first_q_val = now_q_val_arr
             else:
@@ -57,8 +76,8 @@ class AnisoSVD:
         singular_show_num = 10
         singular_cut_num = 4
         svd_result_root = "../results/anisotropy/svd/"
-        outfile_family_name = "run53-aniso"
-        right_time_delay_list = [-3, -2, -1.5, -1, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4, 5, 7, 10, 13, 18, 24, 32, 42, 56, 75, 100, 130, 180, 240, 320, 420, 560, 750, 1000, 1300, 1800, 2400]
+        outfile_family_name = self.file_family_name + "-aniso"
+        right_time_delay_list = self.time_delay_list
 
         all_aniso_data = np.transpose(np.array(self.all_delay_aniso))
         anisoSVD = SVDCalc(all_aniso_data)
@@ -126,10 +145,11 @@ class AnisoSVD:
         rsvOutFp.close()
         lsvOutFp.close()
 
-    def data_svd(self, data_for_svd, data_id, file_family_name="run53", singular_show_num=10, singular_cut_num=5):
+    def data_svd(self, data_for_svd, data_id, singular_show_num=10, singular_cut_num=5):
         svd_result_root = "../results/anisotropy/svd/"
-        outfile_family_name = file_family_name + "-" + data_id
-        right_time_delay_list = [-3, -2, -1.5, -1, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4, 5, 7, 10, 13, 18, 24, 32, 42, 56, 75, 100, 130, 180, 240, 320, 420, 560, 750, 1000, 1300, 1800, 2400]
+        outfile_family_name = self.file_family_name + "-" + data_id
+
+        right_time_delay_list = self.time_delay_list
 
         now_data = np.transpose(np.array(data_for_svd))
         dataSVD = SVDCalc(now_data)
@@ -173,7 +193,10 @@ class AnisoSVD:
         lsv_title = outfile_family_name + " LSV plot"
         rsv_title = outfile_family_name + " RSV plot"
         dataSVD.plot_left_vec_with_x_val(graph_title=lsv_title, x_val=self.first_q_val)
-        dataSVD.plot_right_vec_with_x_text(graph_title=rsv_title, x_text=right_time_delay_list)
+        try:
+            dataSVD.plot_right_vec_with_x_text(graph_title=rsv_title, x_text=right_time_delay_list)
+        except:
+            print("right vect save error")
 
         sVal_file_name = outfile_family_name + "_SingVal.dat"
         rsv_file_name = outfile_family_name + "_RSV.dat"
@@ -190,3 +213,79 @@ class AnisoSVD:
         rsvOutFp.close()
         lsvOutFp.close()
 
+
+
+    def aniso_svd_cut_q_range(self, start_q=0.5, end_q=4):
+        singular_show_num = 10
+        singular_cut_num = 4
+        svd_result_root = "../results/anisotropy/svd/"
+        outfile_family_name = self.file_family_name + "-aniso-cut"
+        right_time_delay_list = self.time_delay_list
+
+        cutted_q_val = self.first_q_val[(self.first_q_val >= start_q) & (self.first_q_val <= end_q)]
+        all_aniso_data = np.transpose(np.array(self.all_delay_aniso))
+        cutted_aniso_data = all_aniso_data[(self.first_q_val >= start_q) & (self.first_q_val <= end_q)]
+        anisoSVD = SVDCalc(cutted_aniso_data)
+        nowSingVal = anisoSVD.calc_svd()
+
+        print(nowSingVal[:singular_show_num])
+        singular_data_y = nowSingVal[:singular_show_num]
+        singular_data_y_log = np.log(singular_data_y)
+        singular_data_x = range(1, len(singular_data_y) + 1)
+
+        def plot_singular_value(data_x, data_y, data_y_log):
+            color_r = 'tab:red'
+            fig, ax1 = plt.subplots()
+            ax1.set_xlabel("index of singular value")
+            ax1.set_ylabel("singular value", color=color_r)
+            ax1.scatter(data_x, data_y, color=color_r)
+            ax1.plot(data_x, data_y, color=color_r)
+            ax1.tick_params(axis='y', labelcolor=color_r)
+
+            ax2 = ax1.twinx()
+            color_b = 'tab:blue'
+            ax2.set_ylabel("log scale singular value", color=color_b)
+            ax2.scatter(data_x, data_y_log, color=color_b)
+            ax2.plot(data_x, data_y_log, color=color_b)
+            ax2.tick_params(axis='y', labelcolor=color_b)
+
+            fig.tight_layout()
+            plt.show()
+
+        plot_singular_value(singular_data_x, singular_data_y, singular_data_y_log)
+
+        bigSingVal = nowSingVal[:singular_cut_num]
+        print(bigSingVal)
+
+        print("left", anisoSVD.leftVec.shape)
+        print("right", anisoSVD.rightVecTrans.shape)
+        anisoSVD.pick_meaningful_data(singular_cut_num)
+        print("left", anisoSVD.meanLeftVec.shape)
+        print("right", anisoSVD.meanRightVec.shape)
+
+        '''
+        right_label = []
+        for idx_delay in range(54):
+            now_label = str(idx_delay + 1) + "-th delay"
+            right_label.append(now_label)
+        '''
+
+        lsv_title = outfile_family_name + " LSV plot"
+        rsv_title = outfile_family_name + " RSV plot"
+        anisoSVD.plot_left_vec_with_x_val(graph_title=lsv_title, x_val=cutted_q_val)
+        anisoSVD.plot_right_vec_with_x_text(graph_title=rsv_title, x_text=right_time_delay_list)
+
+        sVal_file_name = outfile_family_name + "_SingVal.dat"
+        rsv_file_name = outfile_family_name + "_RSV.dat"
+        lsv_file_name = outfile_family_name + "_LSV.dat"
+
+        sValOutFp = open((svd_result_root + sVal_file_name), 'w')
+        rsvOutFp = open((svd_result_root + rsv_file_name), 'w')
+        lsvOutFp = open((svd_result_root + lsv_file_name), 'w')
+
+        anisoSVD.file_output_singular_value(sValOutFp)
+        anisoSVD.file_output_singular_vectors_with_label(lsvOutFp, rsvOutFp, leftLableName="energy", leftLabel=cutted_q_val, rightLabelName="substrate", rightLabel=right_time_delay_list)
+
+        sValOutFp.close()
+        rsvOutFp.close()
+        lsvOutFp.close()
