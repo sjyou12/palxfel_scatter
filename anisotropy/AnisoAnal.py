@@ -46,6 +46,8 @@ class AnisoAnal:
         self.each_delay_cutted_q = []
         self.each_delay_cutted_iso = []
         self.each_delay_cutted_aniso = []
+        self.each_delay_cutted_stderr_iso = []
+        self.each_delay_cutted_stderr_aniso = []
         self.img_file_names = []
         self.img_dir_path = []
         self.bkg_img = []
@@ -308,7 +310,7 @@ class AnisoAnal:
         print("now img list size : ", np.shape(img_list) , "now key_norm_val_pair_list : ", np.shape(key_norm_val_pair_list))
         UpperBoundOfNotWater = 8000
         LowerBoundOfWater = 10000
-        WaterOutlierLowerBound = 30000
+        WaterOutlierLowerBound = 230000
         do_outlier_rm = True
 
         key_list = np.transpose(key_norm_val_pair_list)[0]
@@ -357,17 +359,24 @@ class AnisoAnal:
 
         now_delay_iso_list = []
         now_delay_aniso_list = []
+        now_delay_stderr_iso_list = []
+        now_delay_stderr_aniso_list = []
         for tth_idx, each_tth_val in enumerate(twotheta_rad):
-            now_iso, now_aniso = self.anisotropy_fit(each_tth_val, phi_deg_unit, azi_result_2d[0][:, tth_idx],
-                                                     q_A_inv_unit[tth_idx], tth_idx, False)
+            now_iso, now_aniso, now_stderr_iso, now_stderr_aniso = self.anisotropy_fit(each_tth_val, phi_deg_unit, azi_result_2d[0][:, tth_idx], q_A_inv_unit[tth_idx], tth_idx, False)
             now_delay_iso_list.append(now_iso)
             now_delay_aniso_list.append(now_aniso)
+            now_delay_stderr_iso_list.append(now_stderr_iso)
+            now_delay_stderr_aniso_list.append(now_stderr_aniso)
 
         now_delay_iso_list = np.array(now_delay_iso_list)
         now_delay_aniso_list = np.array(now_delay_aniso_list)
+        now_delay_stderr_iso_list = np.array(now_delay_stderr_iso_list)
+        now_delay_stderr_aniso_list = np.array(now_delay_stderr_aniso_list)
         cutted_iso = now_delay_iso_list[~np.isnan(now_delay_iso_list)]
         cutted_aniso = now_delay_aniso_list[~np.isnan(now_delay_iso_list)]
         cutted_q_val = q_A_inv_unit[~np.isnan(now_delay_iso_list)]
+        cutted_stderr_iso = now_delay_stderr_iso_list[~np.isnan(now_delay_iso_list)]
+        cutted_stderr_aniso = now_delay_stderr_aniso_list[~np.isnan(now_delay_iso_list)]
 
         normalization_range = cutted_iso[(cutted_q_val >= 1.5) & (cutted_q_val <= 3.5)]
         norm_range_iso_sum = np.sum(normalization_range)
@@ -376,10 +385,15 @@ class AnisoAnal:
         self.each_delay_cutted_q.append(cutted_q_val)
         self.each_delay_cutted_iso.append(cutted_iso)
         self.each_delay_cutted_aniso.append(cutted_aniso)
+        self.each_delay_cutted_stderr_iso.append(cutted_stderr_iso)
+        self.each_delay_cutted_stderr_aniso.append(cutted_stderr_aniso)
 
         if result_plot:
             plt.title("isotropic signal of " + str(self.now_delay_idx) + "-th delay")
-            plt.scatter(cutted_q_val, cutted_iso)
+            # plt.scatter(cutted_q_val, cutted_iso)
+            plt.errorbar(cutted_q_val, cutted_iso, yerr=cutted_stderr_iso, linestyle='None', ecolor='k', capsize=2,
+                         marker='o', markersize=1.5)
+
             plt.xlabel("Q (A^-1)")
             plt.ylabel("dS_0")
             plt.show()
@@ -392,14 +406,15 @@ class AnisoAnal:
             plt.show()
 
         plt.title("anisotropic signal of " + str(self.now_delay_idx) + "-th delay")
-        plt.scatter(cutted_q_val, cutted_aniso)
+        # plt.scatter(cutted_q_val, cutted_aniso)
+        plt.errorbar(cutted_q_val, cutted_aniso, yerr=cutted_stderr_aniso, linestyle='None', ecolor='k', capsize=2, marker='o', markersize=1.5)
         plt.xlabel("Q (A^-1)")
         plt.ylabel("dS_2")
         plt.show()
 
     @staticmethod
     def anisotropy_fit(twotheta_rad, phi_deg, azi_intg_data, q_val, q_idx, test_plot=False):
-        test_plot_idx = 200
+        test_plot_idx = 100
         # cos theta_q = - cos theta(rad) * cos phi(rad)
         cos_theta_q = -np.cos(twotheta_rad / 2) * np.cos(np.deg2rad(phi_deg))
         # P_2(x) = (3x^2 - 1) /2
@@ -410,12 +425,14 @@ class AnisoAnal:
         y_cutted_data = y_data[y_data != 0]
 
         if len(y_cutted_data) == 0:
-            return np.nan, np.nan
+            return np.nan, np.nan, np.nan, np.nan
 
         regResult = linregress(x_cutted_data, y_cutted_data)
 
         ds0_isotropic = regResult.intercept
         ds2_anisotropic = regResult.slope
+        iso_stderr = regResult.intercept_stderr
+        aniso_stderr = regResult.stderr
 
         if test_plot and (q_idx == test_plot_idx):
             # print("test plot q pos y data", y_data)
@@ -437,7 +454,7 @@ class AnisoAnal:
             plt.ylabel("dS")
             plt.show()
 
-        return ds0_isotropic, ds2_anisotropic
+        return ds0_isotropic, ds2_anisotropic, iso_stderr, aniso_stderr
 
     def set_azimuthal_integrator(self):
         sd_dist_in_m = self.sample_detector_dist * 1e-3  # unit transfer mm -> m
@@ -465,9 +482,14 @@ class AnisoAnal:
         q_val_file_name = file_save_root + "_qval"
         iso_file_name = file_save_root + "_iso"
         aniso_file_name = file_save_root + "_aniso"
+        iso_stderr_file_name = file_save_root + "_stderr_iso"
+        aniso_stderr_file_name = file_save_root + "_stderr_aniso"
+
 
         np.save(q_val_file_name, self.each_delay_cutted_q[0])
         np.save(iso_file_name, self.each_delay_cutted_iso[0])
         np.save(aniso_file_name, self.each_delay_cutted_aniso[0])
+        np.save(iso_stderr_file_name, self.each_delay_cutted_stderr_iso[0])
+        np.save(aniso_stderr_file_name, self.each_delay_cutted_stderr_aniso[0])
 
         print("successful result save : delay " + str(idx_delay + 1) + " - th (1-based)")
